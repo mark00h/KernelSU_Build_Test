@@ -66,16 +66,18 @@ jobs:
           echo "RSKSUVER=$RSKSUVER" >> $GITHUB_ENV
         else
           curl -LSs https://raw.githubusercontent.com/backslashxx/KernelSU/master/kernel/setup.sh | bash -s master
-          bash $GITHUB_WORKSPACE/patches/kernel-4.19-patch.sh
+          bash $GITHUB_WORKSPACE/patches/kernel-4.19-backslashxx-patch.sh
           XXKSUVER=$(grep -oP 'KSU_VERSION\s*=\s*\K\d+' KernelSU/kernel/Makefile | tail -n1)
           echo "XXKSUVER=$XXKSUVER" >> $GITHUB_ENV
         fi
 
         grep -q "ksu_handle_execveat" fs/exec.c
         grep -q "ksu_handle_faccessat" fs/open.c
-        grep -q "ksu_handle_sys_read" fs/read_write.c
         grep -q "ksu_handle_stat" fs/stat.c
         grep -q "ksu_handle_sys_reboot" kernel/reboot.c
+        if [ "${{ matrix.ks }}" = "rsuntk" ]; then
+          grep -q "ksu_handle_sys_read" fs/read_write.c
+        fi
 
         sed -i 's/ -dirty//g' scripts/setlocalversion
 

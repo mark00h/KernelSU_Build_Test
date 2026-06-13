@@ -60,16 +60,22 @@ jobs:
 
         if [ "${{ matrix.ks }}" = "rsuntk" ]; then
           curl -LSs https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh | bash -s main
-          bash $GITHUB_WORKSPACE/patches/kernel-4.19-patch.sh || true
+          bash $GITHUB_WORKSPACE/patches/kernel-4.19-patch.sh
           echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/vendor/kona-perf_defconfig
           RSKSUVER=$(cd KernelSU && expr $(git rev-list --count HEAD) + 29971)
           echo "RSKSUVER=$RSKSUVER" >> $GITHUB_ENV
         else
           curl -LSs https://raw.githubusercontent.com/backslashxx/KernelSU/master/kernel/setup.sh | bash -s master
-          echo "CONFIG_KSU_TAMPER_SYSCALL_TABLE=y" >> arch/arm64/configs/vendor/kona-perf_defconfig
+          bash $GITHUB_WORKSPACE/patches/kernel-4.19-patch.sh
           XXKSUVER=$(grep -oP 'KSU_VERSION\s*=\s*\K\d+' KernelSU/kernel/Makefile | tail -n1)
           echo "XXKSUVER=$XXKSUVER" >> $GITHUB_ENV
         fi
+
+        grep -q "ksu_handle_execveat" fs/exec.c
+        grep -q "ksu_handle_faccessat" fs/open.c
+        grep -q "ksu_handle_sys_read" fs/read_write.c
+        grep -q "ksu_handle_stat" fs/stat.c
+        grep -q "ksu_handle_sys_reboot" kernel/reboot.c
 
         sed -i 's/ -dirty//g' scripts/setlocalversion
 
@@ -88,6 +94,7 @@ jobs:
         DEFCONFIG="vendor/kona-perf_defconfig vendor/oplus.config"
 
         make O=out CC=clang $BA_CMD $EX_CMD $DEFCONFIG
+        grep -E 'CONFIG_KSU|CONFIG_CFI|CONFIG_KPROBES|CONFIG_KALLSYMS' out/.config || true
         make -j$(nproc --all) O=out CC=clang $BA_CMD $EX_CMD
 
     - name: Check kernel output
